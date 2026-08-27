@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,12 +26,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
-        OutputTextBox.Text = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Downloads", "Compressed");
+        OutputTextBox.Text = LoadOutputFolder();
         UpdateCompressionModeUI();
         UpdateQueueUi();
-            Loaded += MainWindow_Loaded;
+        Loaded += MainWindow_Loaded;
+        Closing += (_, _) => SaveOutputFolder();
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -121,7 +121,10 @@ public partial class MainWindow : Window
             InitialDirectory = Directory.Exists(OutputTextBox.Text) ? OutputTextBox.Text : null
         };
         if (dialog.ShowDialog(this) == true)
+        {
             OutputTextBox.Text = dialog.FolderName;
+            SaveOutputFolder();
+        }
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -160,6 +163,7 @@ public partial class MainWindow : Window
         if (_isBusy || Items.Count == 0) return;
 
         var output = OutputTextBox.Text.Trim();
+        SaveOutputFolder();
         if (string.IsNullOrWhiteSpace(output))
         {
             SetFooter("ERROR", "Choose an output folder.");
@@ -461,6 +465,60 @@ public partial class MainWindow : Window
         return combo.SelectedItem is ComboBoxItem item
             ? item.Content?.ToString() ?? string.Empty
             : combo.Text;
+    }
+
+    private static string SettingsFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "WindowsCompressor",
+        "settings.json");
+
+    private static string DefaultOutputFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        "Downloads",
+        "Compressed");
+
+    private static string LoadOutputFolder()
+    {
+        try
+        {
+            if (!File.Exists(SettingsFilePath))
+                return DefaultOutputFolder;
+
+            var json = File.ReadAllText(SettingsFilePath);
+            var settings = JsonSerializer.Deserialize<AppSettings>(json);
+            return string.IsNullOrWhiteSpace(settings?.OutputFolder)
+                ? DefaultOutputFolder
+                : settings.OutputFolder;
+        }
+        catch
+        {
+            return DefaultOutputFolder;
+        }
+    }
+
+    private void SaveOutputFolder()
+    {
+        var output = OutputTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(output))
+            return;
+
+        try
+        {
+            var directory = Path.GetDirectoryName(SettingsFilePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            var json = JsonSerializer.Serialize(new AppSettings { OutputFolder = output });
+            File.WriteAllText(SettingsFilePath, json);
+        }
+        catch
+        {
+        }
+    }
+
+    private sealed class AppSettings
+    {
+        public string? OutputFolder { get; set; }
     }
 
     private static string Condense(string value)
