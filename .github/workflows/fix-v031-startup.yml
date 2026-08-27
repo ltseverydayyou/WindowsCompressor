@@ -29,17 +29,12 @@ jobs:
           cs = Path("MainWindow.xaml.cs")
           text = cs.read_text(encoding="utf-8")
 
-          marker = '''        UpdateCompressionModeUI();
-              UpdateQueueUi();
-          }
+          constructor_pattern = re.compile(r'(?s)(    public MainWindow\(\)\s*\{.*?        UpdateQueueUi\(\);\s*)\}')
+          text, count = constructor_pattern.subn(r'\1        Loaded += MainWindow_Loaded;\n    }', text, count=1)
+          if count != 1:
+              raise SystemExit("Constructor not found")
 
-              private void TitleBar_MouseLeftButtonDown'''
-          replacement = '''        UpdateCompressionModeUI();
-              UpdateQueueUi();
-              Loaded += MainWindow_Loaded;
-          }
-
-              private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+          loaded_method = '''    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
               {
                   Loaded -= MainWindow_Loaded;
 
@@ -70,13 +65,11 @@ jobs:
                   }
               }
 
-              private void TitleBar_MouseLeftButtonDown'''
+          '''.replace('              ', '    ')
+          marker = '    private void TitleBar_MouseLeftButtonDown'
           if marker not in text:
-              marker = marker.replace('              ', '    ')
-              replacement = replacement.replace('              ', '    ')
-          if marker not in text:
-              raise SystemExit("Constructor marker not found")
-          text = text.replace(marker, replacement, 1)
+              raise SystemExit("Title bar method marker not found")
+          text = text.replace(marker, loaded_method + marker, 1)
 
           new_mode_method = '''    private void UpdateCompressionModeUI()
               {
@@ -128,7 +121,10 @@ jobs:
           if count != 1:
               raise SystemExit("UpdateCompressionModeUI method not found")
 
-          text = text.replace('if (FooterPill is not null)\n        {\n            FooterPill.BeginAnimation', 'if (FooterPill is not null && IsLoaded)\n        {\n            FooterPill.BeginAnimation', 1)
+          text, count = re.subn(r'if \(FooterPill is not null\)', 'if (FooterPill is not null && IsLoaded)', text, count=1)
+          if count != 1:
+              raise SystemExit("Footer animation guard not found")
+
           cs.write_text(text, encoding="utf-8", newline="\n")
           '@ | Set-Content -Path fix_v031.py -Encoding UTF8
           python fix_v031.py
