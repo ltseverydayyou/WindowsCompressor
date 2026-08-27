@@ -260,7 +260,11 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
                         <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="13">
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Stretch"
+                                          Focusable="False" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="InputBorder" Property="BorderBrush" Value="#8E64C2" /></Trigger>
@@ -281,7 +285,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
                         <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="9" Margin="3,2">
-                            <ContentPresenter />
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#2A1B3B" /><Setter Property="Foreground" Value="{StaticResource Text}" /></Trigger>
@@ -306,12 +310,19 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border x:Name="Outer" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="1" CornerRadius="13">
                                             <Grid>
-                                                <ContentPresenter Margin="12,0,34,0" VerticalAlignment="Center" Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                <ContentPresenter Margin="12,0,34,0"
+                                                                  VerticalAlignment="Center"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
                                                 <TextBlock Text="⌄" FontSize="15" Foreground="#AE9DC1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,3" />
                                             </Grid>
                                         </Border>
@@ -403,21 +414,45 @@
 
         <Style TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextSoft}" />
             <Setter Property="BorderBrush" Value="#1D1426" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="MinHeight" Value="58" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#261839" /></Trigger>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#171021" /></Trigger>
+                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#2B1A42" /><Setter Property="Foreground" Value="#F1E9FF" /></Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsMouseOver" Value="True" />
+                        <Condition Property="IsSelected" Value="False" />
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="#171021" />
+                </MultiTrigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextSoft}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="13,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -627,8 +662,12 @@
                                             <ColumnDefinition Width="8" />
                                             <ColumnDefinition Width="76" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="OutputTextBox" Style="{StaticResource MidnightTextBox}" Height="38" />
-                                        <Button Grid.Column="2" Style="{StaticResource ButtonBase}" Content="Browse" Height="38" Click="Browse_Click" />
+                                        <TextBox x:Name="OutputTextBox"
+                                                 Style="{StaticResource MidnightTextBox}"
+                                                 Height="40"
+                                                 Padding="12,0"
+                                                 VerticalContentAlignment="Center" />
+                                        <Button Grid.Column="2" Style="{StaticResource ButtonBase}" Content="Browse" Height="40" Click="Browse_Click" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -649,7 +688,7 @@
                                         </Border>
                                     </Grid>
 
-                                    <Grid>
+                                    <Grid HorizontalAlignment="Stretch">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="42" />
                                             <ColumnDefinition Width="*" />
@@ -657,8 +696,24 @@
                                         </Grid.ColumnDefinitions>
                                         <Button x:Name="TargetMinusButton" Style="{StaticResource ButtonBase}" Content="−" Width="42" Height="42" Padding="0" Click="TargetSizeMinus_Click" />
                                         <Grid Grid.Column="1" Margin="8,0">
-                                            <TextBox x:Name="TargetSizeTextBox" Style="{StaticResource MidnightTextBox}" Height="42" Text="20" HorizontalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Padding="10,6,36,6" PreviewTextInput="TargetSizeTextBox_PreviewTextInput" />
-                                            <TextBlock Text="MB" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" IsHitTestVisible="False" />
+                                            <TextBox x:Name="TargetSizeTextBox"
+                                                     Style="{StaticResource MidnightTextBox}"
+                                                     Height="42"
+                                                     Text="20"
+                                                     HorizontalContentAlignment="Center"
+                                                     VerticalContentAlignment="Center"
+                                                     FontSize="16"
+                                                     FontWeight="SemiBold"
+                                                     Padding="10,0"
+                                                     PreviewTextInput="TargetSizeTextBox_PreviewTextInput" />
+                                            <TextBlock Text="MB"
+                                                       FontSize="9"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource Muted}"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"
+                                                       IsHitTestVisible="False" />
                                         </Grid>
                                         <Button x:Name="TargetPlusButton" Grid.Column="2" Style="{StaticResource ButtonBase}" Content="+" Width="42" Height="42" Padding="0" Click="TargetSizePlus_Click" />
                                     </Grid>
