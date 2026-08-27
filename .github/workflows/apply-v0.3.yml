@@ -15,14 +15,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply source payload
+      - name: Apply source and icon
         shell: pwsh
         run: |
-          $payload = Get-Content '.github/update-v0.3.zip.b64' -Raw
-          $zip = Join-Path $env:RUNNER_TEMP 'update-v0.3.zip'
-          [IO.File]::WriteAllBytes($zip, [Convert]::FromBase64String($payload.Trim()))
-          Expand-Archive -Path $zip -DestinationPath $env:GITHUB_WORKSPACE -Force
-          Remove-Item '.github/update-v0.3.zip.b64' -Force
+          $srcB64 = ((Get-ChildItem '.github/v03/src.part*' | Sort-Object Name | ForEach-Object { Get-Content $_.FullName -Raw }) -join '')
+          $srcZip = Join-Path $env:RUNNER_TEMP 'v03-source.zip'
+          [IO.File]::WriteAllBytes($srcZip, [Convert]::FromBase64String($srcB64))
+          Expand-Archive -Path $srcZip -DestinationPath $env:GITHUB_WORKSPACE -Force
+
+          $iconB64 = ((Get-ChildItem '.github/v03/icon.part*' | Sort-Object Name | ForEach-Object { Get-Content $_.FullName -Raw }) -join '')
+          New-Item -ItemType Directory -Force -Path 'Assets' | Out-Null
+          [IO.File]::WriteAllBytes((Join-Path $env:GITHUB_WORKSPACE 'Assets\AppIcon.ico'), [Convert]::FromBase64String($iconB64))
+
+          Remove-Item '.github/v03' -Recurse -Force
+          Remove-Item '.github/update-v0.3.zip.b64' -Force -ErrorAction SilentlyContinue
+          Remove-Item '.github/workflows/apply-v0.3.yml' -Force
 
       - name: Commit update
         shell: pwsh
