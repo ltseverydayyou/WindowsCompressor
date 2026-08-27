@@ -16,43 +16,25 @@ jobs:
         run: |
           @'
           from pathlib import Path
+          import re
 
           xaml = Path("MainWindow.xaml")
           text = xaml.read_text(encoding="utf-8")
-          old = '''        <Grid x:Name="RootShell" Opacity="0" RenderTransformOrigin="0.5,0.5">
-              <Grid.RenderTransform>
-                  <TranslateTransform x:Name="RootTranslate" Y="10" />
-              </Grid.RenderTransform>
-              <Grid.Triggers>
-                  <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                      <BeginStoryboard>
-                          <Storyboard>
-                              <DoubleAnimation Storyboard.TargetName="RootShell" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.28" />
-                              <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y" From="10" To="0" Duration="0:0:0.32">
-                                  <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
-                              </DoubleAnimation>
-                          </Storyboard>
-                      </BeginStoryboard>
-                  </EventTrigger>
-              </Grid.Triggers>
-          '''
-          new = '''        <Grid x:Name="RootShell" Opacity="0" RenderTransformOrigin="0.5,0.5">
-              <Grid.RenderTransform>
-                  <TranslateTransform x:Name="RootTranslate" Y="10" />
-              </Grid.RenderTransform>
-          '''
-          if old not in text:
+          pattern = re.compile(r'(?s)(<Grid x:Name="RootShell"[^>]*>\s*<Grid\.RenderTransform>.*?</Grid\.RenderTransform>)\s*<Grid\.Triggers>\s*<EventTrigger RoutedEvent="FrameworkElement\.Loaded">.*?</Grid\.Triggers>')
+          text, count = pattern.subn(r'\1', text, count=1)
+          if count != 1:
               raise SystemExit("Root startup storyboard block not found")
-          xaml.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+          xaml.write_text(text, encoding="utf-8", newline="\n")
 
           cs = Path("MainWindow.xaml.cs")
           text = cs.read_text(encoding="utf-8")
 
-          old = '''        UpdateCompressionModeUI();
+          marker = '''        UpdateCompressionModeUI();
               UpdateQueueUi();
           }
-          '''
-          new = '''        UpdateCompressionModeUI();
+
+              private void TitleBar_MouseLeftButtonDown'''
+          replacement = '''        UpdateCompressionModeUI();
               UpdateQueueUi();
               Loaded += MainWindow_Loaded;
           }
@@ -87,80 +69,66 @@ jobs:
                       RootTranslate.Y = 0;
                   }
               }
-          '''
-          if old not in text:
-              raise SystemExit("Constructor block not found")
-          text = text.replace(old, new, 1)
 
-          old = '''        var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
-              var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
-              var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+              private void TitleBar_MouseLeftButtonDown'''
+          if marker not in text:
+              marker = marker.replace('              ', '    ')
+              replacement = replacement.replace('              ', '    ')
+          if marker not in text:
+              raise SystemExit("Constructor marker not found")
+          text = text.replace(marker, replacement, 1)
 
-              TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+          new_mode_method = '''    private void UpdateCompressionModeUI()
               {
-                  To = targetOpacity,
-                  Duration = TimeSpan.FromMilliseconds(180),
-                  EasingFunction = easing
-              });
+                  if (TargetSizePanel is null || QualityCombo is null || CompressionModeCombo is null) return;
 
-              QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
-              {
-                  To = qualityOpacity,
-                  Duration = TimeSpan.FromMilliseconds(180),
-                  EasingFunction = easing
-              });
-          '''
-          new = '''        var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
-              var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
+                  var targetMode = SelectedText(CompressionModeCombo).Equals("Target size", StringComparison.OrdinalIgnoreCase);
+                  TargetSizePanel.IsEnabled = !_isBusy;
+                  QualityCombo.IsEnabled = !targetMode && !_isBusy;
 
-              if (!IsLoaded)
-              {
-                  TargetSizePanel.BeginAnimation(OpacityProperty, null);
-                  QualityCombo.BeginAnimation(OpacityProperty, null);
-                  TargetSizePanel.Opacity = targetOpacity;
-                  QualityCombo.Opacity = qualityOpacity;
-                  return;
-              }
+                  var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
+                  var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
 
-              try
-              {
-                  TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+                  if (!IsLoaded)
                   {
-                      To = targetOpacity,
-                      Duration = TimeSpan.FromMilliseconds(160),
-                      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                  });
+                      TargetSizePanel.BeginAnimation(OpacityProperty, null);
+                      QualityCombo.BeginAnimation(OpacityProperty, null);
+                      TargetSizePanel.Opacity = targetOpacity;
+                      QualityCombo.Opacity = qualityOpacity;
+                      return;
+                  }
 
-                  QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+                  try
                   {
-                      To = qualityOpacity,
-                      Duration = TimeSpan.FromMilliseconds(160),
-                      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                  });
-              }
-              catch
-              {
-                  TargetSizePanel.BeginAnimation(OpacityProperty, null);
-                  QualityCombo.BeginAnimation(OpacityProperty, null);
-                  TargetSizePanel.Opacity = targetOpacity;
-                  QualityCombo.Opacity = qualityOpacity;
-              }
-          '''
-          if old not in text:
-              raise SystemExit("Compression mode animation block not found")
-          text = text.replace(old, new, 1)
+                      TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+                      {
+                          To = targetOpacity,
+                          Duration = TimeSpan.FromMilliseconds(160),
+                          EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                      });
 
-          old = '''        if (FooterPill is not null)
-              {
-                  FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
-          '''
-          new = '''        if (FooterPill is not null && IsLoaded)
-              {
-                  FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
-          '''
-          if old not in text:
-              raise SystemExit("Footer animation block not found")
-          text = text.replace(old, new, 1)
+                      QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+                      {
+                          To = qualityOpacity,
+                          Duration = TimeSpan.FromMilliseconds(160),
+                          EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                      });
+                  }
+                  catch
+                  {
+                      TargetSizePanel.BeginAnimation(OpacityProperty, null);
+                      QualityCombo.BeginAnimation(OpacityProperty, null);
+                      TargetSizePanel.Opacity = targetOpacity;
+                      QualityCombo.Opacity = qualityOpacity;
+                  }
+              }
+
+              private void TargetPreset_Click'''.replace('              ', '    ')
+          text, count = re.subn(r'(?s)    private void UpdateCompressionModeUI\(\)\s*\{.*?\n    \}\n\n    private void TargetPreset_Click', new_mode_method, text, count=1)
+          if count != 1:
+              raise SystemExit("UpdateCompressionModeUI method not found")
+
+          text = text.replace('if (FooterPill is not null)\n        {\n            FooterPill.BeginAnimation', 'if (FooterPill is not null && IsLoaded)\n        {\n            FooterPill.BeginAnimation', 1)
           cs.write_text(text, encoding="utf-8", newline="\n")
           '@ | Set-Content -Path fix_v031.py -Encoding UTF8
           python fix_v031.py
