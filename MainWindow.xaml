@@ -426,18 +426,6 @@
             <Grid.RenderTransform>
                 <TranslateTransform x:Name="RootTranslate" Y="10" />
             </Grid.RenderTransform>
-            <Grid.Triggers>
-                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                    <BeginStoryboard>
-                        <Storyboard>
-                            <DoubleAnimation Storyboard.TargetName="RootShell" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.28" />
-                            <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y" From="10" To="0" Duration="0:0:0.32">
-                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
-                            </DoubleAnimation>
-                        </Storyboard>
-                    </BeginStoryboard>
-                </EventTrigger>
-            </Grid.Triggers>
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="52" />

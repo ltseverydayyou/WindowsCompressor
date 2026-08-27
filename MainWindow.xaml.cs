@@ -30,6 +30,38 @@ public partial class MainWindow : Window
             "Downloads", "Compressed");
         UpdateCompressionModeUI();
         UpdateQueueUi();
+            Loaded += MainWindow_Loaded;
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindow_Loaded;
+
+        try
+        {
+            RootShell.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+      From = 0,
+      To = 1,
+      Duration = TimeSpan.FromMilliseconds(240),
+      EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+
+            RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation
+            {
+      From = 10,
+      To = 0,
+      Duration = TimeSpan.FromMilliseconds(280),
+      EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+        }
+        catch
+        {
+            RootShell.BeginAnimation(OpacityProperty, null);
+            RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+            RootShell.Opacity = 1;
+            RootTranslate.Y = 0;
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -335,21 +367,39 @@ public partial class MainWindow : Window
 
         var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
         var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
-        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
 
-        TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+        if (!IsLoaded)
         {
-            To = targetOpacity,
-            Duration = TimeSpan.FromMilliseconds(180),
-            EasingFunction = easing
-        });
+            TargetSizePanel.BeginAnimation(OpacityProperty, null);
+            QualityCombo.BeginAnimation(OpacityProperty, null);
+            TargetSizePanel.Opacity = targetOpacity;
+            QualityCombo.Opacity = qualityOpacity;
+            return;
+        }
 
-        QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+        try
         {
-            To = qualityOpacity,
-            Duration = TimeSpan.FromMilliseconds(180),
-            EasingFunction = easing
-        });
+            TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+      To = targetOpacity,
+      Duration = TimeSpan.FromMilliseconds(160),
+      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            });
+
+            QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+      To = qualityOpacity,
+      Duration = TimeSpan.FromMilliseconds(160),
+      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            });
+        }
+        catch
+        {
+            TargetSizePanel.BeginAnimation(OpacityProperty, null);
+            QualityCombo.BeginAnimation(OpacityProperty, null);
+            TargetSizePanel.Opacity = targetOpacity;
+            QualityCombo.Opacity = qualityOpacity;
+        }
     }
 
     private void TargetPreset_Click(object sender, RoutedEventArgs e)
@@ -394,7 +444,7 @@ public partial class MainWindow : Window
         FooterStatus.Text = state;
         FooterDetail.Text = detail;
 
-        if (FooterPill is not null)
+        if (FooterPill is not null && IsLoaded)
         {
             FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
             {
