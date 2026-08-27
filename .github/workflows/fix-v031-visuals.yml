@@ -1,0 +1,113 @@
+name: Fix v0.3.1 visuals
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Patch WPF colors and alignment
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          p = Path("MainWindow.xaml")
+          s = p.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  '''                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="13">\n                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />\n                        </Border>''',
+                  '''                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="13">\n                            <ScrollViewer x:Name="PART_ContentHost"\n                                          Margin="{TemplateBinding Padding}"\n                                          VerticalAlignment="Center"\n                                          HorizontalAlignment="Stretch"\n                                          Focusable="False" />\n                        </Border>'''
+              ),
+              (
+                  '''                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="9" Margin="3,2">\n                            <ContentPresenter />\n                        </Border>''',
+                  '''                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="9" Margin="3,2">\n                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />\n                        </Border>'''
+              ),
+              (
+                  '''                            <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">''',
+                  '''                            <ToggleButton x:Name="ToggleButton"\n                                          Focusable="False"\n                                          ClickMode="Press"\n                                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"\n                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">'''
+              ),
+              (
+                  '''                                                <ContentPresenter Margin="12,0,34,0" VerticalAlignment="Center" Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}" />''',
+                  '''                                                <ContentPresenter Margin="12,0,34,0"\n                                                                  VerticalAlignment="Center"\n                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"\n                                                                  TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}" />'''
+              ),
+              (
+                  '''        <Style TargetType="DataGridRow">\n            <Setter Property="Background" Value="Transparent" />''',
+                  '''        <Style TargetType="DataGridRow">\n            <Setter Property="Background" Value="Transparent" />\n            <Setter Property="Foreground" Value="{StaticResource TextSoft}" />'''
+              ),
+              (
+                  '''                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#261839" /></Trigger>\n                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#171021" /></Trigger>''',
+                  '''                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#2B1A42" /><Setter Property="Foreground" Value="#F1E9FF" /></Trigger>\n                <MultiTrigger>\n                    <MultiTrigger.Conditions>\n                        <Condition Property="IsMouseOver" Value="True" />\n                        <Condition Property="IsSelected" Value="False" />\n                    </MultiTrigger.Conditions>\n                    <Setter Property="Background" Value="#171021" />\n                </MultiTrigger>'''
+              ),
+              (
+                  '''        <Style TargetType="DataGridCell">\n            <Setter Property="BorderThickness" Value="0" />\n            <Setter Property="Padding" Value="13,0" />\n            <Setter Property="VerticalContentAlignment" Value="Center" />\n            <Setter Property="FocusVisualStyle" Value="{x:Null}" />\n        </Style>''',
+                  '''        <Style TargetType="DataGridCell">\n            <Setter Property="Background" Value="Transparent" />\n            <Setter Property="Foreground" Value="{StaticResource TextSoft}" />\n            <Setter Property="BorderThickness" Value="0" />\n            <Setter Property="Padding" Value="13,0" />\n            <Setter Property="VerticalContentAlignment" Value="Center" />\n            <Setter Property="FocusVisualStyle" Value="{x:Null}" />\n            <Setter Property="Template">\n                <Setter.Value>\n                    <ControlTemplate TargetType="DataGridCell">\n                        <Border Background="{TemplateBinding Background}"\n                                BorderBrush="{TemplateBinding BorderBrush}"\n                                BorderThickness="{TemplateBinding BorderThickness}"\n                                Padding="{TemplateBinding Padding}"\n                                SnapsToDevicePixels="True">\n                            <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"\n                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"\n                                              TextElement.Foreground="{TemplateBinding Foreground}" />\n                        </Border>\n                    </ControlTemplate>\n                </Setter.Value>\n            </Setter>\n        </Style>'''
+              ),
+              (
+                  '''                                        <TextBox x:Name="OutputTextBox" Style="{StaticResource MidnightTextBox}" Height="38" />\n                                        <Button Grid.Column="2" Style="{StaticResource ButtonBase}" Content="Browse" Height="38" Click="Browse_Click" />''',
+                  '''                                        <TextBox x:Name="OutputTextBox"\n                                                 Style="{StaticResource MidnightTextBox}"\n                                                 Height="40"\n                                                 Padding="12,0"\n                                                 VerticalContentAlignment="Center" />\n                                        <Button Grid.Column="2" Style="{StaticResource ButtonBase}" Content="Browse" Height="40" Click="Browse_Click" />'''
+              ),
+              (
+                  '''                                    <Grid>\n                                        <Grid.ColumnDefinitions>\n                                            <ColumnDefinition Width="42" />\n                                            <ColumnDefinition Width="*" />\n                                            <ColumnDefinition Width="42" />\n                                        </Grid.ColumnDefinitions>''',
+                  '''                                    <Grid HorizontalAlignment="Stretch">\n                                        <Grid.ColumnDefinitions>\n                                            <ColumnDefinition Width="42" />\n                                            <ColumnDefinition Width="*" />\n                                            <ColumnDefinition Width="42" />\n                                        </Grid.ColumnDefinitions>'''
+              ),
+              (
+                  '''                                        <Grid Grid.Column="1" Margin="8,0">\n                                            <TextBox x:Name="TargetSizeTextBox" Style="{StaticResource MidnightTextBox}" Height="42" Text="20" HorizontalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Padding="10,6,36,6" PreviewTextInput="TargetSizeTextBox_PreviewTextInput" />\n                                            <TextBlock Text="MB" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" IsHitTestVisible="False" />\n                                        </Grid>''',
+                  '''                                        <Grid Grid.Column="1" Margin="8,0">\n                                            <TextBox x:Name="TargetSizeTextBox"\n                                                     Style="{StaticResource MidnightTextBox}"\n                                                     Height="42"\n                                                     Text="20"\n                                                     HorizontalContentAlignment="Center"\n                                                     VerticalContentAlignment="Center"\n                                                     FontSize="16"\n                                                     FontWeight="SemiBold"\n                                                     Padding="10,0"\n                                                     PreviewTextInput="TargetSizeTextBox_PreviewTextInput" />\n                                            <TextBlock Text="MB"\n                                                       FontSize="9"\n                                                       FontWeight="Bold"\n                                                       Foreground="{StaticResource Muted}"\n                                                       HorizontalAlignment="Right"\n                                                       VerticalAlignment="Center"\n                                                       Margin="0,0,12,0"\n                                                       IsHitTestVisible="False" />\n                                        </Grid>'''
+              )
+          ]
+
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit("Expected XAML block not found:\n" + old[:140])
+              s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding="utf-8", newline="\n")
+          '@ | Set-Content patch_ui.py -Encoding UTF8
+          python patch_ui.py
+          Remove-Item patch_ui.py
+
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish WindowsCompressor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+
+      - name: Startup smoke test
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'publish\Compressor.exe'
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 6
+          if ($p.HasExited) {
+            Write-Error "Compressor exited during startup. ExitCode=$($p.ExitCode)"
+            exit 1
+          }
+          Write-Host "Compressor stayed running. PID=$($p.Id)"
+          Stop-Process -Id $p.Id -Force
+
+      - name: Commit visual fixes
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MainWindow.xaml
+          git commit -m "Fix v0.3.1 UI readability and alignment"
+          git push origin main
+
+      - name: Replace v0.3.1 executable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v0.3.1 publish\Compressor.exe --clobber
