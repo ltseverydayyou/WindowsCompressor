@@ -1,0 +1,59 @@
+name: Build Windows Compressor
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Create or update a GitHub release
+        required: true
+        default: true
+        type: boolean
+      tag:
+        description: Release tag
+        required: true
+        default: v0.2.0
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish self-contained EXE
+        shell: pwsh
+        run: dotnet publish WindowsCompressor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compressor-win-x64
+          path: publish/Compressor.exe
+          if-no-files-found: error
+
+      - name: Create or update release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $exe = Join-Path $PWD 'publish\Compressor.exe'
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG $exe --clobber
+          } else {
+            gh release create $env:RELEASE_TAG $exe --target main --title "Compressor $env:RELEASE_TAG" --notes "Midnight-purple Windows compressor build. Square-corner UI, drag/drop queue, batch compression, FFmpeg media compression, ZIP fallback, quality presets, format selection, progress and cancellation."
+          }
