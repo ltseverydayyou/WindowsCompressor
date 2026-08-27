@@ -1,0 +1,37 @@
+name: Smoke test v0.3.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish WindowsCompressor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+      - name: Launch and verify process survives startup
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'publish\Compressor.exe'
+          $before = Get-Date
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 6
+          if ($p.HasExited) {
+            Write-Host "Compressor exited during startup. ExitCode=$($p.ExitCode)"
+            Write-Host "Recent Application events:"
+            Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=$before} -ErrorAction SilentlyContinue |
+              Where-Object { $_.ProviderName -in @('.NET Runtime','Application Error','Windows Error Reporting') } |
+              Select-Object -First 20 TimeCreated, ProviderName, Id, LevelDisplayName, Message |
+              Format-List | Out-String -Width 300 | Write-Host
+            exit 1
+          }
+          Write-Host "Compressor remained running for 6 seconds. Startup smoke test passed. PID=$($p.Id)"
+          Stop-Process -Id $p.Id -Force
