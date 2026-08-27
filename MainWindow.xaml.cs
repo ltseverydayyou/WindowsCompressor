@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using Microsoft.Win32;
 using WindowsCompressor.Models;
 using WindowsCompressor.Services;
@@ -314,7 +315,7 @@ public partial class MainWindow : Window
     private void SetBusyVisuals(bool busy)
     {
         CompressButton.IsEnabled = !busy && Items.Count > 0;
-        CompressButton.Content = busy ? "COMPRESSING…" : "COMPRESS";
+        CompressButton.Content = busy ? "Compressing…" : "Compress";
         CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         CompressionModeCombo.IsEnabled = !busy;
         FormatCombo.IsEnabled = !busy;
@@ -327,10 +328,28 @@ public partial class MainWindow : Window
     private void UpdateCompressionModeUI()
     {
         if (TargetSizePanel is null || QualityCombo is null || CompressionModeCombo is null) return;
+
         var targetMode = SelectedText(CompressionModeCombo).Equals("Target size", StringComparison.OrdinalIgnoreCase);
         TargetSizePanel.IsEnabled = !_isBusy;
-        TargetSizePanel.Opacity = 1;
         QualityCombo.IsEnabled = !targetMode && !_isBusy;
+
+        var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
+        var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
+        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+
+        TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            To = targetOpacity,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = easing
+        });
+
+        QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            To = qualityOpacity,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EasingFunction = easing
+        });
     }
 
     private void TargetPreset_Click(object sender, RoutedEventArgs e)
@@ -374,6 +393,17 @@ public partial class MainWindow : Window
     {
         FooterStatus.Text = state;
         FooterDetail.Text = detail;
+
+        if (FooterPill is not null)
+        {
+            FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
+            {
+                From = 0.5,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(180),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            });
+        }
     }
 
     private static string SelectedText(ComboBox combo)
