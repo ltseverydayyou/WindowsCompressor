@@ -16,7 +16,8 @@
         AllowDrop="True"
         Drop="Window_Drop"
         DragOver="Window_DragOver"
-        StateChanged="Window_StateChanged">
+        StateChanged="Window_StateChanged"
+        Icon="Assets/AppIcon.ico">
 
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="7" CornerRadius="0" GlassFrameThickness="0" />
@@ -193,31 +194,29 @@
             <Setter Property="BorderBrush" Value="{StaticResource Border}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Height" Value="36" />
-            <Setter Property="Padding" Value="11,0" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="ItemContainerStyle" Value="{StaticResource MidnightComboItem}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border x:Name="Outer" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <Border x:Name="Outer" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                                 <Grid>
-                                    <ContentPresenter Margin="11,0,34,0" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                                    <ContentPresenter Margin="11,0,34,0" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" />
                                     <TextBlock Text="⌄" FontSize="16" Foreground="#B7A8CA" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,4" />
                                 </Grid>
                             </Border>
                             <ToggleButton Background="Transparent" BorderThickness="0" Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ClickMode="Press">
                                 <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" /></ControlTemplate></ToggleButton.Template>
                             </ToggleButton>
-                            <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                                <Border Background="#130D20" BorderBrush="#49305F" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="320" Margin="0,3,0,0">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer>
+                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                <Border Background="#130D20" BorderBrush="#47305F" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,2,0,0">
+                                    <ScrollViewer><ItemsPresenter /></ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Outer" Property="BorderBrush" Value="{StaticResource BorderHot}" /></Trigger>
-                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -225,16 +224,17 @@
         </Style>
 
         <Style x:Key="MidnightProgress" TargetType="ProgressBar">
-            <Setter Property="Height" Value="5" />
-            <Setter Property="Background" Value="#251A31" />
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Background" Value="#21162D" />
             <Setter Property="Foreground" Value="{StaticResource Accent}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ProgressBar">
-                        <Grid Background="{TemplateBinding Background}" ClipToBounds="True">
-                            <Rectangle x:Name="PART_Track" Fill="Transparent" />
-                            <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}" HorizontalAlignment="Left" />
+                        <Grid ClipToBounds="True">
+                            <Border Background="{TemplateBinding Background}" />
+                            <Border x:Name="PART_Track" />
+                            <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" />
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -247,35 +247,35 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="GridLinesVisibility" Value="None" />
             <Setter Property="HeadersVisibility" Value="Column" />
-            <Setter Property="RowBackground" Value="#0E0918" />
-            <Setter Property="AlternatingRowBackground" Value="#100A1B" />
-            <Setter Property="HorizontalGridLinesBrush" Value="#281B36" />
-            <Setter Property="SelectionMode" Value="Extended" />
-            <Setter Property="SelectionUnit" Value="FullRow" />
+            <Setter Property="RowHeaderWidth" Value="0" />
+            <Setter Property="AutoGenerateColumns" Value="False" />
             <Setter Property="CanUserAddRows" Value="False" />
             <Setter Property="CanUserDeleteRows" Value="False" />
             <Setter Property="CanUserResizeRows" Value="False" />
-            <Setter Property="RowHeight" Value="58" />
-            <Setter Property="ColumnHeaderHeight" Value="38" />
+            <Setter Property="SelectionMode" Value="Extended" />
+            <Setter Property="SelectionUnit" Value="FullRow" />
+            <Setter Property="AlternatingRowBackground" Value="#0B0711" />
+            <Setter Property="RowBackground" Value="#0D0914" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#191120" />
             <Setter Property="FontSize" Value="13" />
         </Style>
 
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#0A0711" />
-            <Setter Property="Foreground" Value="#8F829F" />
-            <Setter Property="BorderBrush" Value="#2A1C39" />
+            <Setter Property="Background" Value="#100A18" />
+            <Setter Property="Foreground" Value="#80738E" />
+            <Setter Property="BorderBrush" Value="#21162C" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Padding" Value="12,9" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style TargetType="DataGridRow">
-            <Setter Property="BorderBrush" Value="#21172C" />
+            <Setter Property="BorderBrush" Value="#19111F" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="MinHeight" Value="52" />
             <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#251735" /></Trigger>
+                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#21152F" /></Trigger>
                 <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#171020" /></Trigger>
             </Style.Triggers>
         </Style>
@@ -288,7 +288,7 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="{StaticResource Bg}" BorderBrush="#39244C" BorderThickness="1" CornerRadius="0">
+    <Border Background="{StaticResource Bg}" BorderBrush="#1E1427" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="44" />
@@ -301,9 +301,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                    <Border Width="15" Height="15" Background="{StaticResource Accent}" Margin="0,0,10,0">
-                        <Border Width="5" Height="5" Background="#E9DEFF" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Border Width="24" Height="24" Margin="0,0,9,0" ClipToBounds="True">
+                        <Image Source="Assets/AppIcon.ico" Width="24" Height="24" Stretch="UniformToFill" />
                     </Border>
                     <TextBlock Text="COMPRESSOR" FontWeight="SemiBold" FontSize="12" Foreground="#DCD1EB" VerticalAlignment="Center" />
                     <TextBlock Text="  /  MEDIA + FILES" FontSize="10" Foreground="#6F627D" VerticalAlignment="Center" />
@@ -458,31 +458,31 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="4" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="0">
+                <Border Grid.Row="4" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="48" />
+                            <RowDefinition Height="46" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0" Background="#0A0711">
+                        <Grid Grid.Row="0" Background="#0B0712">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
                                 <TextBlock x:Name="QueueCountText" Text="QUEUE  ·  0 FILES" FontSize="11" FontWeight="SemiBold" Foreground="#BDB0CD" />
                                 <TextBlock x:Name="QueueBytesText" Text="  ·  0 B" FontSize="11" Foreground="#70647E" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,6,8,6">
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                                 <Button Style="{StaticResource ButtonBase}" Content="OPEN OUTPUT" Height="34" Padding="12,0" Click="OpenOutput_Click" />
                                 <Button Style="{StaticResource ButtonBase}" Content="REMOVE" Height="34" Padding="12,0" Margin="6,0,0,0" Click="RemoveSelected_Click" />
                                 <Button Style="{StaticResource ButtonBase}" Content="CLEAR" Height="34" Padding="12,0" Margin="6,0,0,0" Click="Clear_Click" />
                             </StackPanel>
                         </Grid>
 
-                        <Grid Grid.Row="1" x:Name="QueueArea" Background="#0D0916" AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
-                            <DataGrid x:Name="QueueGrid" ItemsSource="{Binding Items}" AutoGenerateColumns="False" AlternationCount="2" SelectionChanged="QueueGrid_SelectionChanged">
+                        <Grid Grid.Row="1">
+                            <DataGrid x:Name="QueueGrid" ItemsSource="{Binding Items}" SelectionChanged="QueueGrid_SelectionChanged">
                                 <DataGrid.Columns>
                                     <DataGridTemplateColumn Header="FILE" Width="*">
                                         <DataGridTemplateColumn.CellTemplate>
@@ -494,28 +494,28 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="TYPE" Binding="{Binding Kind}" Width="86" />
+                                    <DataGridTextColumn Header="TYPE" Binding="{Binding Kind}" Width="90" />
                                     <DataGridTextColumn Header="ORIGINAL" Binding="{Binding OriginalSize}" Width="105" />
-                                    <DataGridTemplateColumn Header="STATUS" Width="175">
+                                    <DataGridTemplateColumn Header="STATUS" Width="205">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <Grid>
+                                                    <Grid Margin="0,0,0,6">
                                                         <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#C9BBDD" />
                                                         <TextBlock Text="{Binding Progress, StringFormat={}{0:0}%}" FontSize="10" Foreground="#796A89" HorizontalAlignment="Right" />
                                                     </Grid>
-                                                    <ProgressBar Style="{StaticResource MidnightProgress}" Value="{Binding Progress}" Maximum="100" Margin="0,6,0,0" />
+                                                    <ProgressBar Style="{StaticResource MidnightProgress}" Value="{Binding Progress}" Minimum="0" Maximum="100" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="RESULT" Binding="{Binding Result}" Width="140" />
+                                    <DataGridTextColumn Header="RESULT" Binding="{Binding Result}" Width="145" />
                                 </DataGrid.Columns>
                             </DataGrid>
 
                             <Grid x:Name="EmptyState" IsHitTestVisible="False">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Border Width="46" Height="46" BorderBrush="#5A3978" BorderThickness="1" Margin="0,0,0,15">
+                                    <Border Width="44" Height="44" BorderBrush="#3E2954" BorderThickness="1" Margin="0,0,0,13">
                                         <Grid>
                                             <TextBlock Text="+" FontSize="26" FontWeight="Light" Foreground="#A477DE" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-3,0,0" />
                                         </Grid>
@@ -533,15 +533,11 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="FooterStatus" Text="READY" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Accent}" />
-                            <TextBlock Text="  /  " FontSize="10" Foreground="#493B57" />
-                            <TextBlock x:Name="FooterDetail" Text="Add files to begin." FontSize="11" Foreground="#81738F" />
-                        </StackPanel>
-                        <ProgressBar x:Name="OverallProgress" Style="{StaticResource MidnightProgress}" Width="420" Value="0" Maximum="100" Margin="0,8,0,0" HorizontalAlignment="Left" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="FooterStatus" Text="READY" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Accent}" />
+                        <TextBlock Text="  /  " FontSize="10" Foreground="#493B57" />
+                        <TextBlock x:Name="FooterDetail" Text="Add files to begin." FontSize="11" Foreground="#81738F" />
                     </StackPanel>
-
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button x:Name="CancelButton" Style="{StaticResource ButtonBase}" Content="CANCEL" Width="104" Visibility="Collapsed" Click="Cancel_Click" />
                         <Button x:Name="CompressButton" Style="{StaticResource AccentButton}" Content="COMPRESS" Width="142" Margin="8,0,0,0" IsEnabled="False" Click="Compress_Click" />

@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
+using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using Microsoft.Win32;
 using WindowsCompressor.Models;
 using WindowsCompressor.Services;
@@ -15,7 +15,7 @@ namespace WindowsCompressor;
 public partial class MainWindow : Window
 {
     private readonly CompressionService _compression = new();
-    private CancellationTokenSource? _compressionCancellation;
+    private CancellationTokenSource? _cts;
     private bool _isBusy;
 
     public ObservableCollection<CompressionItem> Items { get; } = [];
@@ -27,27 +27,42 @@ public partial class MainWindow : Window
         OutputTextBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads", "Compressed");
-        UpdateQueueSummary();
         UpdateCompressionModeUI();
+        UpdateQueueUi();
     }
 
-    protected override void OnSourceInitialized(EventArgs e)
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        base.OnSourceInitialized(e);
-        try
+        if (e.ClickCount == 2)
         {
-            var handle = new WindowInteropHelper(this).Handle;
-            var preference = 1;
-            _ = DwmSetWindowAttribute(handle, 33, ref preference, sizeof(int));
+            ToggleMaximize();
+            return;
         }
-        catch
+        if (e.ButtonState == MouseButtonState.Pressed)
         {
+            try { DragMove(); } catch { }
         }
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Window_StateChanged(object? sender, EventArgs e) => UpdateMaximizeGlyph();
+
+    private void ToggleMaximize()
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        UpdateMaximizeGlyph();
+    }
+
+    private void UpdateMaximizeGlyph()
+    {
+        if (MaximizeButton is not null)
+            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
     }
 
     private void AddFiles_Click(object sender, RoutedEventArgs e)
     {
-        if (_isBusy) return;
         var dialog = new OpenFileDialog
         {
             Title = "Add files to Compressor",
@@ -60,14 +75,9 @@ public partial class MainWindow : Window
 
     private void AddFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (_isBusy) return;
-        var dialog = new OpenFolderDialog
-        {
-            Title = "Add a folder",
-            Multiselect = false
-        };
+        var dialog = new OpenFolderDialog { Title = "Add a folder" };
         if (dialog.ShowDialog(this) == true)
-            AddPaths([dialog.FolderName]);
+            AddPaths(Directory.EnumerateFiles(dialog.FolderName, "*", SearchOption.AllDirectories));
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -75,64 +85,58 @@ public partial class MainWindow : Window
         var dialog = new OpenFolderDialog
         {
             Title = "Choose output folder",
-            Multiselect = false,
             InitialDirectory = Directory.Exists(OutputTextBox.Text) ? OutputTextBox.Text : null
         };
         if (dialog.ShowDialog(this) == true)
             OutputTextBox.Text = dialog.FolderName;
     }
 
-    private void OpenOutput_Click(object sender, RoutedEventArgs e)
+    private void Window_DragOver(object sender, DragEventArgs e)
     {
-        try
-        {
-            var folder = OutputTextBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(folder)) return;
-            Directory.CreateDirectory(folder);
-            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            SetFooter("ERROR", ex.Message);
-        }
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+            AddPaths(ExpandPaths(paths));
     }
 
     private void RemoveSelected_Click(object sender, RoutedEventArgs e)
     {
         if (_isBusy) return;
         var selected = QueueGrid.SelectedItems.Cast<CompressionItem>().ToArray();
-        foreach (var item in selected)
-            Items.Remove(item);
-        UpdateQueueSummary();
+        foreach (var item in selected) Items.Remove(item);
+        UpdateQueueUi();
     }
 
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
         if (_isBusy) return;
         Items.Clear();
-        OverallProgress.Value = 0;
-        UpdateQueueSummary();
-        SetFooter("READY", "Add files to begin.");
+        UpdateQueueUi();
     }
+
+    private void QueueGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
 
     private async void Compress_Click(object sender, RoutedEventArgs e)
     {
         if (_isBusy || Items.Count == 0) return;
 
-        var outputFolder = OutputTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(outputFolder))
+        var output = OutputTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(output))
         {
-            SetFooter("ERROR", "Choose an output folder first.");
+            SetFooter("ERROR", "Choose an output folder.");
             return;
         }
 
-        try
-        {
-            Directory.CreateDirectory(outputFolder);
-        }
+        try { Directory.CreateDirectory(output); }
         catch (Exception ex)
         {
-            SetFooter("ERROR", ex.Message);
+            SetFooter("ERROR", Condense(ex.Message));
             return;
         }
 
@@ -150,179 +154,158 @@ public partial class MainWindow : Window
         }
 
         _isBusy = true;
-        _compressionCancellation = new CancellationTokenSource();
         SetBusyVisuals(true);
-
-        var snapshot = Items.ToArray();
-        var completed = 0;
-        var failed = 0;
-        var totalSaved = 0L;
-        var wasCanceled = false;
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
         var quality = SelectedText(QualityCombo);
         var format = SelectedText(FormatCombo);
-
-        foreach (var item in snapshot)
-        {
-            item.Progress = 0;
-            item.Result = "—";
-            item.Status = "Waiting";
-        }
+        var completed = 0;
+        var failed = 0;
+        long totalSaved = 0;
 
         try
         {
-            for (var i = 0; i < snapshot.Length; i++)
-            {
-                var item = snapshot[i];
-                _compressionCancellation.Token.ThrowIfCancellationRequested();
-                item.Status = "Compressing";
-                SetFooter("WORKING", item.Name);
+            SetFooter("WORKING", $"Starting {Items.Count} file{(Items.Count == 1 ? string.Empty : "s")}…");
 
-                var itemIndex = i;
-                var progress = new Progress<double>(value =>
+            foreach (var item in Items)
+            {
+                token.ThrowIfCancellationRequested();
+                item.Status = "Compressing";
+                item.Progress = 0;
+                item.Result = "—";
+
+                var progress = new Progress<double>(p => item.Progress = Math.Clamp(p, 0, 100));
+                var status = new Progress<string>(text =>
                 {
-                    item.Progress = value;
-                    OverallProgress.Value = ((itemIndex + value / 100d) / snapshot.Length) * 100d;
+                    item.Status = text;
+                    SetFooter("WORKING", $"{item.Name} · {text}");
                 });
-                var status = new Progress<string>(text => SetFooter("WORKING", text));
 
                 try
                 {
                     var result = await _compression.CompressAsync(
                         item,
-                        outputFolder,
+                        output,
                         quality,
                         format,
                         targetMegabytes,
                         progress,
                         status,
-                        _compressionCancellation.Token);
+                        token);
 
                     item.Progress = 100;
-                    var delta = item.OriginalBytes - result.OutputBytes;
-                    totalSaved += Math.Max(0, delta);
-                    if (delta >= 0)
+                    item.Status = "Done";
+                    if (result.OutputBytes <= item.OriginalBytes)
                     {
-                        var percentage = item.OriginalBytes == 0 ? 0 : delta * 100d / item.OriginalBytes;
-                        item.Status = "Done";
+                        var saved = item.OriginalBytes - result.OutputBytes;
+                        totalSaved += saved;
+                        var percentage = item.OriginalBytes == 0 ? 0 : saved * 100d / item.OriginalBytes;
                         item.Result = $"{CompressionItem.FormatBytes(result.OutputBytes)}  −{percentage:0.#}%";
                     }
                     else
                     {
-                        var percentage = item.OriginalBytes == 0 ? 0 : -delta * 100d / item.OriginalBytes;
-                        item.Status = "Larger";
+                        var larger = result.OutputBytes - item.OriginalBytes;
+                        var percentage = item.OriginalBytes == 0 ? 0 : larger * 100d / item.OriginalBytes;
                         item.Result = $"{CompressionItem.FormatBytes(result.OutputBytes)}  +{percentage:0.#}%";
                     }
                     completed++;
                 }
-                catch (OperationCanceledException)
-                {
-                    item.Status = "Canceled";
-                    wasCanceled = true;
-                    throw;
-                }
+                catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
                 {
                     item.Status = "Failed";
-                    item.Result = "ERROR";
+                    item.Result = Condense(ex.Message);
                     failed++;
-                    SetFooter("ERROR", $"{item.Name}: {Condense(ex.Message)}");
                 }
             }
+
+            SetFooter(
+                failed == 0 ? "DONE" : "PARTIAL",
+                failed == 0
+                    ? $"{completed} completed · saved {CompressionItem.FormatBytes(totalSaved)}"
+                    : $"{completed} completed · {failed} failed · saved {CompressionItem.FormatBytes(totalSaved)}");
         }
         catch (OperationCanceledException)
         {
-            wasCanceled = true;
+            foreach (var item in Items.Where(i => i.Status is not "Done" and not "Failed"))
+            {
+                item.Status = "Cancelled";
+                item.Result = "—";
+            }
+            SetFooter("CANCELLED", "Compression stopped.");
         }
         finally
         {
+            _cts?.Dispose();
+            _cts = null;
             _isBusy = false;
-            _compressionCancellation.Dispose();
-            _compressionCancellation = null;
             SetBusyVisuals(false);
         }
-
-        if (wasCanceled)
-        {
-            SetFooter("CANCELED", $"{completed} completed before cancellation.");
-        }
-        else
-        {
-            OverallProgress.Value = 100;
-            var detail = failed == 0
-                ? $"{completed} completed · saved {CompressionItem.FormatBytes(totalSaved)}"
-                : $"{completed} completed · {failed} failed · saved {CompressionItem.FormatBytes(totalSaved)}";
-            SetFooter(failed == 0 ? "DONE" : "DONE / ERRORS", detail);
-        }
     }
 
-    private void Cancel_Click(object sender, RoutedEventArgs e) => _compressionCancellation?.Cancel();
-
-    private void Window_DragOver(object sender, DragEventArgs e)
+    private void OpenOutput_Click(object sender, RoutedEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void Window_Drop(object sender, DragEventArgs e)
-    {
-        if (_isBusy) return;
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
-            AddPaths(paths);
+        var output = OutputTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(output)) return;
+        try
+        {
+            Directory.CreateDirectory(output);
+            Process.Start(new ProcessStartInfo { FileName = output, UseShellExecute = true });
+        }
+        catch (Exception ex) { SetFooter("ERROR", Condense(ex.Message)); }
     }
 
     private void AddPaths(IEnumerable<string> paths)
     {
-        var existing = new HashSet<string>(Items.Select(x => x.Path), StringComparer.OrdinalIgnoreCase);
-        foreach (var path in ExpandPaths(paths))
+        var known = Items.Select(x => x.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = 0;
+
+        foreach (var path in paths)
         {
-            if (!File.Exists(path) || !existing.Add(path)) continue;
             try
             {
+                if (!File.Exists(path) || !known.Add(path)) continue;
                 var info = new FileInfo(path);
                 Items.Add(new CompressionItem
                 {
                     Path = info.FullName,
                     Name = info.Name,
                     Kind = CompressionService.GetKind(info.FullName),
-                    OriginalBytes = info.Length
+                    OriginalBytes = info.Length,
+                    Status = "Ready",
+                    Progress = 0,
+                    Result = "—"
                 });
+                added++;
             }
-            catch
-            {
-            }
+            catch { }
         }
-        UpdateQueueSummary();
+
+        UpdateQueueUi();
+        SetFooter(added > 0 ? "READY" : "NOTICE", added > 0 ? $"Added {added} file{(added == 1 ? string.Empty : "s")}." : "No new files were added.");
     }
 
     private static IEnumerable<string> ExpandPaths(IEnumerable<string> paths)
     {
-        var options = new EnumerationOptions
-        {
-            RecurseSubdirectories = true,
-            IgnoreInaccessible = true,
-            ReturnSpecialDirectories = false
-        };
-
         foreach (var path in paths)
         {
             if (File.Exists(path))
             {
                 yield return path;
+                continue;
             }
-            else if (Directory.Exists(path))
-            {
-                IEnumerable<string> files;
-                try { files = Directory.EnumerateFiles(path, "*", options); }
-                catch { continue; }
-                foreach (var file in files)
-                    yield return file;
-            }
+
+            if (!Directory.Exists(path)) continue;
+            IEnumerable<string> files;
+            try { files = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories); }
+            catch { continue; }
+            foreach (var file in files) yield return file;
         }
     }
 
-    private void UpdateQueueSummary()
+    private void UpdateQueueUi()
     {
-        QueueCountText.Text = $"QUEUE  ·  {Items.Count} {(Items.Count == 1 ? "FILE" : "FILES")}";
+        QueueCountText.Text = $"QUEUE  ·  {Items.Count} FILE{(Items.Count == 1 ? string.Empty : "S")}";
         QueueBytesText.Text = $"  ·  {CompressionItem.FormatBytes(Items.Sum(x => x.OriginalBytes))}";
         EmptyState.Visibility = Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         CompressButton.IsEnabled = Items.Count > 0 && !_isBusy;
@@ -345,14 +328,15 @@ public partial class MainWindow : Window
     {
         if (TargetSizePanel is null || QualityCombo is null || CompressionModeCombo is null) return;
         var targetMode = SelectedText(CompressionModeCombo).Equals("Target size", StringComparison.OrdinalIgnoreCase);
-        TargetSizePanel.IsEnabled = targetMode && !_isBusy;
-        TargetSizePanel.Opacity = targetMode ? 1 : 0.45;
+        TargetSizePanel.IsEnabled = !_isBusy;
+        TargetSizePanel.Opacity = 1;
         QualityCombo.IsEnabled = !targetMode && !_isBusy;
     }
 
     private void TargetPreset_Click(object sender, RoutedEventArgs e)
     {
         if (_isBusy || sender is not Button { Tag: string value }) return;
+        CompressionModeCombo.SelectedIndex = 1;
         TargetSizeTextBox.Text = value;
         SetFooter("TARGET", $"Per-file target set to {value} MB.");
     }
@@ -361,6 +345,7 @@ public partial class MainWindow : Window
     {
         if (_isBusy) return;
         var current = TryGetTargetMegabytes(out var value) ? value : 20;
+        CompressionModeCombo.SelectedIndex = 1;
         TargetSizeTextBox.Text = Math.Max(0.1, current - 1).ToString("0.##", CultureInfo.InvariantCulture);
     }
 
@@ -368,6 +353,7 @@ public partial class MainWindow : Window
     {
         if (_isBusy) return;
         var current = TryGetTargetMegabytes(out var value) ? value : 20;
+        CompressionModeCombo.SelectedIndex = 1;
         TargetSizeTextBox.Text = Math.Min(100000, current + 1).ToString("0.##", CultureInfo.InvariantCulture);
     }
 
@@ -399,41 +385,7 @@ public partial class MainWindow : Window
 
     private static string Condense(string value)
     {
-        var firstLine = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
-        return firstLine.Length <= 140 ? firstLine : firstLine[..137] + "…";
+        var single = Regex.Replace(value, @"\s+", " ").Trim();
+        return single.Length <= 110 ? single : single[..107] + "…";
     }
-
-    private void QueueGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-    }
-
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Left) return;
-        if (e.ClickCount == 2)
-            ToggleMaximize();
-        else
-            DragMove();
-    }
-
-    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
-    private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
-
-    private void ToggleMaximize()
-    {
-        if (WindowState == WindowState.Maximized)
-            SystemCommands.RestoreWindow(this);
-        else
-            SystemCommands.MaximizeWindow(this);
-    }
-
-    private void Window_StateChanged(object sender, EventArgs e)
-    {
-        if (MaximizeButton is not null)
-            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
-    }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 }
