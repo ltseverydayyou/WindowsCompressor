@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,7 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads", "Compressed");
         UpdateQueueSummary();
+        UpdateCompressionModeUI();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -134,6 +136,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        double? targetMegabytes = null;
+        if (SelectedText(CompressionModeCombo).Equals("Target size", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!TryGetTargetMegabytes(out var parsedTarget))
+            {
+                SetFooter("ERROR", "Enter a target size between 0.1 MB and 100000 MB.");
+                TargetSizeTextBox.Focus();
+                TargetSizeTextBox.SelectAll();
+                return;
+            }
+            targetMegabytes = parsedTarget;
+        }
+
         _isBusy = true;
         _compressionCancellation = new CancellationTokenSource();
         SetBusyVisuals(true);
@@ -177,6 +192,7 @@ public partial class MainWindow : Window
                         outputFolder,
                         quality,
                         format,
+                        targetMegabytes,
                         progress,
                         status,
                         _compressionCancellation.Token);
@@ -317,9 +333,55 @@ public partial class MainWindow : Window
         CompressButton.IsEnabled = !busy && Items.Count > 0;
         CompressButton.Content = busy ? "COMPRESSING…" : "COMPRESS";
         CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
-        QualityCombo.IsEnabled = !busy;
+        CompressionModeCombo.IsEnabled = !busy;
         FormatCombo.IsEnabled = !busy;
         OutputTextBox.IsEnabled = !busy;
+        UpdateCompressionModeUI();
+    }
+
+    private void CompressionModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateCompressionModeUI();
+
+    private void UpdateCompressionModeUI()
+    {
+        if (TargetSizePanel is null || QualityCombo is null || CompressionModeCombo is null) return;
+        var targetMode = SelectedText(CompressionModeCombo).Equals("Target size", StringComparison.OrdinalIgnoreCase);
+        TargetSizePanel.IsEnabled = targetMode && !_isBusy;
+        TargetSizePanel.Opacity = targetMode ? 1 : 0.45;
+        QualityCombo.IsEnabled = !targetMode && !_isBusy;
+    }
+
+    private void TargetPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isBusy || sender is not Button { Tag: string value }) return;
+        TargetSizeTextBox.Text = value;
+        SetFooter("TARGET", $"Per-file target set to {value} MB.");
+    }
+
+    private void TargetSizeMinus_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isBusy) return;
+        var current = TryGetTargetMegabytes(out var value) ? value : 20;
+        TargetSizeTextBox.Text = Math.Max(0.1, current - 1).ToString("0.##", CultureInfo.InvariantCulture);
+    }
+
+    private void TargetSizePlus_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isBusy) return;
+        var current = TryGetTargetMegabytes(out var value) ? value : 20;
+        TargetSizeTextBox.Text = Math.Min(100000, current + 1).ToString("0.##", CultureInfo.InvariantCulture);
+    }
+
+    private void TargetSizeTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        e.Handled = e.Text.Any(ch => !char.IsDigit(ch) && ch != '.' && ch != ',');
+    }
+
+    private bool TryGetTargetMegabytes(out double value)
+    {
+        var text = TargetSizeTextBox.Text.Trim().Replace(',', '.');
+        return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+               && value >= 0.1
+               && value <= 100000;
     }
 
     private void SetFooter(string state, string detail)

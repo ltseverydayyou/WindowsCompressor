@@ -154,7 +154,7 @@ public sealed class FfmpegService
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("WindowsCompressor/0.2");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("WindowsCompressor/0.3");
         return client;
     }
 }

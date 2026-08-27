@@ -344,46 +344,117 @@
 
                 <Border Grid.Row="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="0" Padding="16">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="170" />
-                            <ColumnDefinition Width="14" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="14" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="100" />
-                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="14" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <StackPanel>
-                            <TextBlock Text="QUALITY" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
-                            <ComboBox x:Name="QualityCombo" Style="{StaticResource MidnightCombo}" SelectedIndex="1">
-                                <ComboBoxItem Content="Smallest" />
-                                <ComboBoxItem Content="Balanced" />
-                                <ComboBoxItem Content="High quality" />
-                            </ComboBox>
-                        </StackPanel>
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="170" />
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="100" />
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="OUTPUT FORMAT" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
-                            <ComboBox x:Name="FormatCombo" Style="{StaticResource MidnightCombo}" SelectedIndex="0">
-                                <ComboBoxItem Content="Auto format" />
-                                <ComboBoxItem Content="MP4" />
-                                <ComboBoxItem Content="WebM" />
-                                <ComboBoxItem Content="WebP" />
-                                <ComboBoxItem Content="JPEG" />
-                                <ComboBoxItem Content="PNG" />
-                                <ComboBoxItem Content="MP3" />
-                                <ComboBoxItem Content="AAC" />
-                                <ComboBoxItem Content="ZIP" />
-                            </ComboBox>
-                        </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="MODE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                <ComboBox x:Name="CompressionModeCombo" Style="{StaticResource MidnightCombo}" SelectedIndex="0" SelectionChanged="CompressionModeCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Quality" />
+                                    <ComboBoxItem Content="Target size" />
+                                </ComboBox>
+                            </StackPanel>
 
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="OUTPUT FOLDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
-                            <TextBox x:Name="OutputTextBox" Style="{StaticResource MidnightTextBox}" Height="36" />
-                        </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="QUALITY" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                <ComboBox x:Name="QualityCombo" Style="{StaticResource MidnightCombo}" SelectedIndex="1">
+                                    <ComboBoxItem Content="Smallest" />
+                                    <ComboBoxItem Content="Balanced" />
+                                    <ComboBoxItem Content="High quality" />
+                                </ComboBox>
+                            </StackPanel>
 
-                        <Button Grid.Column="6" Style="{StaticResource ButtonBase}" Content="BROWSE" VerticalAlignment="Bottom" Click="Browse_Click" />
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="OUTPUT FORMAT" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                <ComboBox x:Name="FormatCombo" Style="{StaticResource MidnightCombo}" SelectedIndex="0">
+                                    <ComboBoxItem Content="Auto format" />
+                                    <ComboBoxItem Content="MP4" />
+                                    <ComboBoxItem Content="WebM" />
+                                    <ComboBoxItem Content="WebP" />
+                                    <ComboBoxItem Content="JPEG" />
+                                    <ComboBoxItem Content="PNG" />
+                                    <ComboBoxItem Content="MP3" />
+                                    <ComboBoxItem Content="AAC" />
+                                    <ComboBoxItem Content="ZIP" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Text="OUTPUT FOLDER" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                <TextBox x:Name="OutputTextBox" Style="{StaticResource MidnightTextBox}" Height="36" />
+                            </StackPanel>
+
+                            <Button Grid.Column="8" Style="{StaticResource ButtonBase}" Content="BROWSE" VerticalAlignment="Bottom" Click="Browse_Click" />
+                        </Grid>
+
+                        <Border Grid.Row="2" x:Name="TargetSizePanel" Background="#0A0711" BorderBrush="#281B36" BorderThickness="1" Padding="12" IsEnabled="False" Opacity="0.45">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="18" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel>
+                                    <TextBlock Text="TARGET SIZE / FILE" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="TargetMinusButton" Style="{StaticResource ButtonBase}" Content="−" Width="34" Height="36" Padding="0" Click="TargetSizeMinus_Click" />
+                                        <TextBox x:Name="TargetSizeTextBox" Style="{StaticResource MidnightTextBox}" Width="86" Height="36" Text="20" HorizontalContentAlignment="Center" Margin="6,0" PreviewTextInput="TargetSizeTextBox_PreviewTextInput" />
+                                        <Border Background="#130D20" BorderBrush="{StaticResource Border}" BorderThickness="1" Width="44" Height="36">
+                                            <TextBlock Text="MB" Foreground="#B8A9CB" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <Button x:Name="TargetPlusButton" Style="{StaticResource ButtonBase}" Content="+" Width="34" Height="36" Padding="0" Margin="6,0,0,0" Click="TargetSizePlus_Click" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="TARGET SIZE PRESETS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Muted2}" Margin="0,0,0,7" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource ButtonBase}" Width="118" Height="48" Padding="0" Tag="10" Click="TargetPreset_Click">
+                                            <StackPanel>
+                                                <TextBlock Text="10 MB" FontSize="14" FontWeight="Bold" Foreground="{StaticResource Text}" HorizontalAlignment="Center" />
+                                                <TextBlock Text="GITHUB" FontSize="9" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource ButtonBase}" Width="118" Height="48" Padding="0" Margin="7,0,0,0" Tag="20" Click="TargetPreset_Click">
+                                            <StackPanel>
+                                                <TextBlock Text="20 MB" FontSize="14" FontWeight="Bold" Foreground="{StaticResource Text}" HorizontalAlignment="Center" />
+                                                <TextBlock Text="DISCORD" FontSize="9" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource ButtonBase}" Width="118" Height="48" Padding="0" Margin="7,0,0,0" Tag="25" Click="TargetPreset_Click">
+                                            <StackPanel>
+                                                <TextBlock Text="25 MB" FontSize="14" FontWeight="Bold" Foreground="{StaticResource Text}" HorizontalAlignment="Center" />
+                                                <TextBlock Text="EMAIL" FontSize="9" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3" Margin="18,19,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="TARGET MODE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Accent}" />
+                                    <TextBlock Text="Uses bitrate / quality fitting" FontSize="10" Foreground="#756A82" Margin="0,3,0,0" />
+                                    <TextBlock Text="to stay at or under the limit." FontSize="10" Foreground="#756A82" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
 

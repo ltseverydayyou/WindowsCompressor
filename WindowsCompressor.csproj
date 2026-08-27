@@ -13,5 +13,10 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishReadyToRun>false</PublishReadyToRun>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
+  <Target Name="GenerateAppIcon" BeforeTargets="PrepareForBuild" Condition="Exists('Assets\AppIcon.ico.b64')">
+    <MakeDir Directories="Assets" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;[IO.File]::WriteAllBytes('$(MSBuildProjectDirectory)\Assets\AppIcon.ico',[Convert]::FromBase64String([IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Assets\AppIcon.ico.b64')))&quot;" />
+  </Target>
 </Project>
