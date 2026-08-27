@@ -1,0 +1,176 @@
+name: Fix v0.3.1 startup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch startup animations
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          xaml = Path("MainWindow.xaml")
+          text = xaml.read_text(encoding="utf-8")
+          old = '''        <Grid x:Name="RootShell" Opacity="0" RenderTransformOrigin="0.5,0.5">
+              <Grid.RenderTransform>
+                  <TranslateTransform x:Name="RootTranslate" Y="10" />
+              </Grid.RenderTransform>
+              <Grid.Triggers>
+                  <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                      <BeginStoryboard>
+                          <Storyboard>
+                              <DoubleAnimation Storyboard.TargetName="RootShell" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.28" />
+                              <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y" From="10" To="0" Duration="0:0:0.32">
+                                  <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                              </DoubleAnimation>
+                          </Storyboard>
+                      </BeginStoryboard>
+                  </EventTrigger>
+              </Grid.Triggers>
+          '''
+          new = '''        <Grid x:Name="RootShell" Opacity="0" RenderTransformOrigin="0.5,0.5">
+              <Grid.RenderTransform>
+                  <TranslateTransform x:Name="RootTranslate" Y="10" />
+              </Grid.RenderTransform>
+          '''
+          if old not in text:
+              raise SystemExit("Root startup storyboard block not found")
+          xaml.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+
+          cs = Path("MainWindow.xaml.cs")
+          text = cs.read_text(encoding="utf-8")
+
+          old = '''        UpdateCompressionModeUI();
+              UpdateQueueUi();
+          }
+          '''
+          new = '''        UpdateCompressionModeUI();
+              UpdateQueueUi();
+              Loaded += MainWindow_Loaded;
+          }
+
+              private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+              {
+                  Loaded -= MainWindow_Loaded;
+
+                  try
+                  {
+                      RootShell.BeginAnimation(OpacityProperty, new DoubleAnimation
+                      {
+                          From = 0,
+                          To = 1,
+                          Duration = TimeSpan.FromMilliseconds(240),
+                          EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                      });
+
+                      RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation
+                      {
+                          From = 10,
+                          To = 0,
+                          Duration = TimeSpan.FromMilliseconds(280),
+                          EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                      });
+                  }
+                  catch
+                  {
+                      RootShell.BeginAnimation(OpacityProperty, null);
+                      RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+                      RootShell.Opacity = 1;
+                      RootTranslate.Y = 0;
+                  }
+              }
+          '''
+          if old not in text:
+              raise SystemExit("Constructor block not found")
+          text = text.replace(old, new, 1)
+
+          old = '''        var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
+              var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
+              var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+
+              TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+              {
+                  To = targetOpacity,
+                  Duration = TimeSpan.FromMilliseconds(180),
+                  EasingFunction = easing
+              });
+
+              QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+              {
+                  To = qualityOpacity,
+                  Duration = TimeSpan.FromMilliseconds(180),
+                  EasingFunction = easing
+              });
+          '''
+          new = '''        var targetOpacity = _isBusy ? 0.55 : targetMode ? 1.0 : 0.82;
+              var qualityOpacity = _isBusy ? 0.55 : targetMode ? 0.5 : 1.0;
+
+              if (!IsLoaded)
+              {
+                  TargetSizePanel.BeginAnimation(OpacityProperty, null);
+                  QualityCombo.BeginAnimation(OpacityProperty, null);
+                  TargetSizePanel.Opacity = targetOpacity;
+                  QualityCombo.Opacity = qualityOpacity;
+                  return;
+              }
+
+              try
+              {
+                  TargetSizePanel.BeginAnimation(OpacityProperty, new DoubleAnimation
+                  {
+                      To = targetOpacity,
+                      Duration = TimeSpan.FromMilliseconds(160),
+                      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                  });
+
+                  QualityCombo.BeginAnimation(OpacityProperty, new DoubleAnimation
+                  {
+                      To = qualityOpacity,
+                      Duration = TimeSpan.FromMilliseconds(160),
+                      EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                  });
+              }
+              catch
+              {
+                  TargetSizePanel.BeginAnimation(OpacityProperty, null);
+                  QualityCombo.BeginAnimation(OpacityProperty, null);
+                  TargetSizePanel.Opacity = targetOpacity;
+                  QualityCombo.Opacity = qualityOpacity;
+              }
+          '''
+          if old not in text:
+              raise SystemExit("Compression mode animation block not found")
+          text = text.replace(old, new, 1)
+
+          old = '''        if (FooterPill is not null)
+              {
+                  FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
+          '''
+          new = '''        if (FooterPill is not null && IsLoaded)
+              {
+                  FooterPill.BeginAnimation(OpacityProperty, new DoubleAnimation
+          '''
+          if old not in text:
+              raise SystemExit("Footer animation block not found")
+          text = text.replace(old, new, 1)
+          cs.write_text(text, encoding="utf-8", newline="\n")
+          '@ | Set-Content -Path fix_v031.py -Encoding UTF8
+          python fix_v031.py
+          Remove-Item fix_v031.py
+      - name: Commit fix
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MainWindow.xaml MainWindow.xaml.cs
+          git diff --cached --check
+          git commit -m "Fix v0.3.1 startup crash"
+          git push origin HEAD:main
