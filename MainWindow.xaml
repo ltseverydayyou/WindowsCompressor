@@ -479,7 +479,7 @@
                     </Border>
                     <TextBlock Text="Compressor" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource Text}" VerticalAlignment="Center" />
                     <Border Margin="9,0,0,0" Background="#251735" CornerRadius="8" Padding="7,3" VerticalAlignment="Center">
-                        <TextBlock Text="v0.3.1" FontSize="9" FontWeight="SemiBold" Foreground="#C9B4EA" />
+                        <TextBlock Text="v0.3.2" FontSize="9" FontWeight="SemiBold" Foreground="#C9B4EA" />
                     </Border>
                 </StackPanel>
 

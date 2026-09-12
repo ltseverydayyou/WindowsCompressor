@@ -13,7 +13,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v0.3.1
+        default: v0.3.2
         type: string
 
 permissions:
@@ -55,5 +55,5 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG $exe --clobber
           } else {
-            gh release create $env:RELEASE_TAG $exe --target main --title "Compressor $env:RELEASE_TAG" --notes "v0.3.1 refresh: squircle-based midnight-purple interface, smoother hover/press/startup animations, cleaner queue layout, redesigned compression controls, target-size presets, and the existing Maxwell app icon."
+            gh release create $env:RELEASE_TAG $exe --target main --title "Compressor $env:RELEASE_TAG" --notes "v0.3.2: fixes the UI freeze during active compression and adds automatic in-place updates from the latest GitHub Release."
           }

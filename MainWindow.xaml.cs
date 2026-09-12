@@ -17,8 +17,10 @@ namespace WindowsCompressor;
 public partial class MainWindow : Window
 {
     private readonly CompressionService _compression = new();
+    private readonly UpdaterService _updater = new();
     private CancellationTokenSource? _cts;
     private bool _isBusy;
+    private bool _isUpdating;
 
     public ObservableCollection<CompressionItem> Items { get; } = [];
 
@@ -33,7 +35,7 @@ public partial class MainWindow : Window
         Closing += (_, _) => SaveOutputFolder();
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
 
@@ -61,6 +63,43 @@ public partial class MainWindow : Window
             RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
             RootShell.Opacity = 1;
             RootTranslate.Y = 0;
+        }
+
+        await CheckForUpdatesAsync();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        UpdateInfo? update = null;
+        try
+        {
+            update = await _updater.CheckForUpdateAsync(CancellationToken.None);
+            if (update is null)
+                return;
+
+            _isUpdating = true;
+            CompressButton.IsEnabled = false;
+            SetFooter("UPDATE", $"Downloading {update.Tag}…");
+
+            var progress = new Progress<double>(value =>
+                SetFooter("UPDATE", $"Downloading {update.Tag} · {value:0}%"));
+
+            await _updater.DownloadAndRestartAsync(update, progress, CancellationToken.None);
+            SetFooter("UPDATE", $"Installing {update.Tag}…");
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            if (update is not null)
+                SetFooter("UPDATE ERROR", Condense(ex.Message));
+        }
+        finally
+        {
+            if (Application.Current?.Dispatcher.HasShutdownStarted != true)
+            {
+                _isUpdating = false;
+                UpdateQueueUi();
+            }
         }
     }
 
@@ -160,7 +199,7 @@ public partial class MainWindow : Window
 
     private async void Compress_Click(object sender, RoutedEventArgs e)
     {
-        if (_isBusy || Items.Count == 0) return;
+        if (_isBusy || _isUpdating || Items.Count == 0) return;
 
         var output = OutputTextBox.Text.Trim();
         SaveOutputFolder();
