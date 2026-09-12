@@ -220,14 +220,16 @@ public partial class MainWindow : Window
 
                 try
                 {
-                    var result = await _compression.CompressAsync(
-                        item,
-                        output,
-                        quality,
-                        format,
-                        targetMegabytes,
-                        progress,
-                        status,
+                    var result = await Task.Run(
+                        () => _compression.CompressAsync(
+                            item,
+                            output,
+                            quality,
+                            format,
+                            targetMegabytes,
+                            progress,
+                            status,
+                            token),
                         token);
 
                     item.Progress = 100;

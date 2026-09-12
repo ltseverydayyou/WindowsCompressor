@@ -129,10 +129,10 @@ public sealed class FfmpegService
         });
 
         var errorTask = process.StandardError.ReadToEndAsync(token);
-        while (!process.StandardOutput.EndOfStream)
+        while (true)
         {
             token.ThrowIfCancellationRequested();
-            var line = await process.StandardOutput.ReadLineAsync(token);
+            var line = await process.StandardOutput.ReadLineAsync(token).ConfigureAwait(false);
             if (line is null) break;
 
             if (durationSeconds > 0 && (line.StartsWith("out_time_us=") || line.StartsWith("out_time_ms=")))
@@ -143,8 +143,8 @@ public sealed class FfmpegService
             }
         }
 
-        await process.WaitForExitAsync(token);
-        var error = await errorTask;
+        await process.WaitForExitAsync(token).ConfigureAwait(false);
+        var error = await errorTask.ConfigureAwait(false);
         if (process.ExitCode != 0)
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? $"FFmpeg exited with code {process.ExitCode}." : error.Trim());
 
